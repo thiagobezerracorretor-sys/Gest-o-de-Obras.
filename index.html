@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102d50">
+  <title>Gestão de Obras</title>
+  <style>
+    :root{
+      --navy:#102d50;--navy2:#173e68;--blue:#1769d2;--blue-soft:#eaf2ff;
+      --green:#168447;--green-soft:#e8f7ee;--yellow:#a66a00;--yellow-soft:#fff4d8;
+      --red:#c43d3d;--red-soft:#ffeded;--ink:#172437;--muted:#65748a;
+      --line:#e1e8f0;--bg:#f3f6fa;--white:#fff;--shadow:0 5px 18px rgba(20,45,75,.07);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .app{min-height:100vh;display:flex}
+    .sidebar{width:248px;background:linear-gradient(180deg,var(--navy),#0b223d);color:#fff;padding:22px 14px;display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:10}
+    .brand{display:flex;align-items:center;gap:11px;padding:5px 10px 28px}
+    .brand-mark{width:42px;height:42px;border-radius:12px;background:#f6b91b;color:var(--navy);display:grid;place-items:center;font-size:24px;font-weight:900}
+    .brand strong{display:block;font-size:17px;line-height:1.15}.brand small{color:#c6d5e5;font-size:12px}
+    .nav{display:grid;gap:6px}
+    .nav button{border:0;background:transparent;color:#d9e5f2;text-align:left;padding:12px 13px;border-radius:11px;display:flex;align-items:center;gap:12px;font-weight:600}
+    .nav button:hover,.nav button.active{background:#1769d2;color:#fff}
+    .nav .ico{width:22px;text-align:center;font-size:18px}
+    .sidebar-foot{margin-top:auto;border-top:1px solid #35516d;padding-top:14px}
+    .main{margin-left:248px;width:calc(100% - 248px);padding:28px 32px 50px;max-width:1600px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px}
+    .eyebrow{color:var(--muted);font-size:13px}.page-title{font-size:28px;letter-spacing:-.7px;margin:2px 0 0;color:var(--navy)}
+    .top-actions{display:flex;gap:10px;align-items:center}
+    .user-chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 13px;color:var(--navy);font-weight:650}
+    .view{display:none}.view.active{display:block}
+    .grid{display:grid;gap:16px}.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}
+    .card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .stat{display:flex;align-items:center;gap:13px;min-height:108px}
+    .stat-icon{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:20px;background:var(--blue-soft);color:var(--blue);flex:none}
+    .stat strong{display:block;font-size:27px;line-height:1.2;color:var(--navy)}
+    .stat span{color:var(--muted);font-size:13px}
+    .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+    h2{font-size:18px;margin:0;color:var(--navy)}h3{font-size:15px;margin:0;color:var(--navy)}
+    .dashboard-grid{grid-template-columns:1.25fr .9fr}
+    .agenda-item,.list-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+    .agenda-item:last-child,.list-item:last-child{border-bottom:0}
+    .time{background:var(--blue-soft);color:var(--blue);font-weight:750;padding:6px 9px;border-radius:9px;font-size:13px;white-space:nowrap}
+    .item-main{min-width:0;flex:1}.item-main strong{display:block}.item-main small{color:var(--muted)}
+    .progress{height:8px;background:#e8edf3;border-radius:99px;overflow:hidden;margin-top:8px}.progress span{display:block;height:100%;background:var(--green);border-radius:99px}
+    .project-row{padding:13px 0;border-bottom:1px solid var(--line)}.project-row:last-child{border:0}
+    .project-top{display:flex;justify-content:space-between;gap:10px;align-items:center}.project-top strong{font-size:14px}
+    .badge{display:inline-flex;align-items:center;border-radius:99px;padding:5px 9px;font-size:11px;font-weight:750;white-space:nowrap}
+    .b-green{background:var(--green-soft);color:var(--green)}.b-yellow{background:var(--yellow-soft);color:var(--yellow)}
+    .b-blue{background:var(--blue-soft);color:var(--blue)}.b-red{background:var(--red-soft);color:var(--red)}.b-gray{background:#edf1f5;color:#58677a}
+    .btn{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:10px;padding:10px 14px;font-weight:700;display:inline-flex;align-items:center;gap:7px}
+    .btn:hover{filter:brightness(.98)}.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+    .btn-success{background:var(--green);color:#fff;border-color:var(--green)}.btn-danger{color:var(--red);border-color:#f0caca}
+    .btn-small{padding:7px 10px;font-size:13px}.btn-block{width:100%;justify-content:center}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .search{flex:1;min-width:200px;position:relative}.search input{width:100%;padding:11px 13px 11px 38px;border:1px solid var(--line);border-radius:11px;background:#fff;outline:none}
+    .search:before{content:"⌕";position:absolute;left:13px;top:5px;font-size:23px;color:var(--muted)}
+    input,select,textarea{border:1px solid #d9e2ec;border-radius:10px;padding:10px 11px;background:#fff;color:var(--ink);width:100%;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#78a9eb;box-shadow:0 0 0 3px #eaf2ff}
+    textarea{min-height:84px;resize:vertical}
+    .filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:15px}.filter{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 13px;color:#526176;font-size:13px;font-weight:650}.filter.active{background:var(--blue);border-color:var(--blue);color:#fff}
+    .data-card{padding:0;overflow:hidden}.data-row{padding:14px 17px;display:flex;align-items:center;gap:13px;border-bottom:1px solid var(--line)}.data-row:last-child{border:0}
+    .avatar{width:40px;height:40px;border-radius:12px;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center;font-weight:800;flex:none}
+    .data-content{flex:1;min-width:0}.data-content strong{display:block}.data-content small{color:var(--muted)}
+    .row-end{text-align:right;display:flex;align-items:center;gap:10px}
+    .muted{color:var(--muted)}.small{font-size:12px}.money{font-weight:800;color:var(--navy)}
+    .money-in{color:var(--green)}.money-out{color:var(--red)}
+    .two-col{grid-template-columns:1fr 1fr}.three-col{grid-template-columns:repeat(3,1fr)}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:grid;gap:6px}.field label{font-size:12px;font-weight:750;color:#53647a}.field.full{grid-column:1/-1}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(8,24,43,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:30}
+    .modal-backdrop.open{display:flex}.modal{background:#fff;border-radius:18px;width:min(620px,100%);max-height:90vh;overflow:auto;box-shadow:0 20px 60px #06172c55}
+    .modal-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.modal-body{padding:20px}.modal-foot{padding:15px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:9px}
+    .close{border:0;background:#f0f3f7;border-radius:9px;width:34px;height:34px;font-size:20px;color:#526176}
+    .empty{padding:34px 16px;text-align:center;color:var(--muted)}
+    .hidden-values{letter-spacing:2px}.eye{border:0;background:#eef3f9;border-radius:9px;padding:7px 10px;color:var(--navy)}
+    .notice{background:#eef5ff;border:1px solid #d6e6fb;border-radius:12px;padding:12px 14px;color:#315477;font-size:13px}
+    .month-title{background:#f0f5fb;padding:10px 13px;border-radius:10px;font-weight:750;color:var(--navy);margin:14px 0 5px}
+    .bottom-nav{display:none}
+    @media(max-width:1050px){.stats{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}.main{padding:24px}}
+    @media(max-width:700px){
+      .sidebar{display:none}.main{margin:0;width:100%;padding:18px 14px 95px}.page-title{font-size:23px}.topbar{margin-bottom:18px}
+      .user-chip{display:none}.stats{gap:10px}.stat{padding:13px;min-height:90px}.stat strong{font-size:23px}.stat-icon{width:38px;height:38px}
+      .card{padding:15px}.data-card{padding:0}.form-grid,.two-col,.three-col{grid-template-columns:1fr}
+      .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:15;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -5px 18px #142d4b12}
+      .bottom-nav button{border:0;background:transparent;color:#627188;font-size:10px;font-weight:650;display:grid;gap:3px;justify-items:center;padding:5px 7px;border-radius:10px;min-width:54px}
+      .bottom-nav button span:first-child{font-size:19px}.bottom-nav button.active{color:var(--blue);background:var(--blue-soft)}
+      .row-end .badge{display:none}.data-row{padding:12px}.toolbar .btn{flex:1;justify-content:center}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">⌂</div><div><strong>Gestão de Obras</strong><small>Reformas e Construções</small></div></div>
+    <nav class="nav" id="sideNav">
+      <button data-view="dashboard" class="active"><span class="ico">⌂</span>Painel</button>
+      <button data-view="clients"><span class="ico">♙</span>Clientes</button>
+      <button data-view="quotes"><span class="ico">▤</span>Orçamentos</button>
+      <button data-view="works"><span class="ico">⌂</span>Obras</button>
+      <button data-view="agenda"><span class="ico">▦</span>Agenda</button>
+      <button data-view="finance"><span class="ico">$</span>Financeiro</button>
+      <button data-view="history"><span class="ico">◷</span>Histórico</button>
+    </nav>
+    <div class="sidebar-foot"><button class="btn btn-block" id="exportBtn">Exportar backup JSON</button><p class="small" style="color:#b9cadd;padding:0 8px">Protótipo local · dados neste navegador</p></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div><div class="eyebrow">Gestão de Obras / <span id="crumb">Painel</span></div><h1 class="page-title" id="pageTitle">Painel</h1></div>
+      <div class="top-actions"><button class="eye" id="globalEye" title="Mostrar ou ocultar valores">◉ Valores visíveis</button><span class="user-chip">Meu espaço</span></div>
+    </header>
+
+    <section class="view active" id="view-dashboard">
+      <div class="grid stats">
+        <div class="card stat"><div class="stat-icon">⌂</div><div><strong id="statWorks">0</strong><span>Obras em andamento</span></div></div>
+        <div class="card stat"><div class="stat-icon">▤</div><div><strong id="statQuotes">0</strong><span>Orçamentos aguardando</span></div></div>
+        <div class="card stat"><div class="stat-icon">▦</div><div><strong id="statToday">0</strong><span>Compromissos hoje</span></div></div>
+        <div class="card stat"><div class="stat-icon">✓</div><div><strong id="statTasks">0</strong><span>Pendências abertas</span></div></div>
+      </div>
+      <div class="grid dashboard-grid">
+        <div class="card">
+          <div class="section-head"><h2>Agenda de hoje</h2><button class="btn btn-small" data-go="agenda">Ver agenda →</button></div>
+          <div id="todayList"></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><h2>Obras em andamento</h2><button class="btn btn-small" data-go="works">Ver todas →</button></div>
+          <div id="dashboardWorks"></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><h2>Resumo financeiro do mês</h2><button class="eye" data-eye>◉</button></div>
+          <div class="grid three-col">
+            <div><span class="small muted">Contratado</span><h3 class="money" data-money id="monthContracted">R$ 0,00</h3></div>
+            <div><span class="small muted">Recebido</span><h3 class="money money-in" data-money id="monthReceived">R$ 0,00</h3></div>
+            <div><span class="small muted">Despesas</span><h3 class="money money-out" data-money id="monthExpenses">R$ 0,00</h3></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-head"><h2>Lembretes e pendências</h2><button class="btn btn-small" data-go="agenda">Abrir agenda</button></div>
+          <div id="dashboardTasks"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-clients">
+      <div class="toolbar"><div class="search"><input id="clientSearch" placeholder="Buscar cliente por nome ou telefone"></div><button class="btn btn-primary" data-modal="client">＋ Novo cliente</button></div>
+      <div class="filters"><button class="filter active" data-client-filter="all">Todos</button><button class="filter" data-client-filter="active">Com obra ativa</button></div>
+      <div class="card data-card" id="clientList"></div>
+    </section>
+
+    <section class="view" id="view-quotes">
+      <div class="toolbar"><div class="search"><input id="quoteSearch" placeholder="Buscar orçamento ou cliente"></div><button class="btn btn-primary" data-modal="quote">＋ Novo orçamento</button></div>
+      <div class="filters"><button class="filter active" data-quote-filter="all">Todos</button><button class="filter" data-quote-filter="Pendente">Pendente</button><button class="filter" data-quote-filter="Em negociação">Em negociação</button><button class="filter" data-quote-filter="Aprovado">Aprovados</button><button class="filter" data-quote-filter="Recusado">Recusados</button></div>
+      <div class="card data-card" id="quoteList"></div>
+    </section>
+
+    <section class="view" id="view-works">
+      <div class="toolbar"><div class="search"><input id="workSearch" placeholder="Buscar obra ou cliente"></div><button class="btn btn-primary" data-modal="work">＋ Nova obra</button></div>
+      <div class="filters"><button class="filter active" data-work-filter="all">Todas</button><button class="filter" data-work-filter="Em andamento">Em andamento</button><button class="filter" data-work-filter="Aguardando início">Aguardando início</button><button class="filter" data-work-filter="Serviço concluído">Serviço concluído</button></div>
+      <div class="card data-card" id="workList"></div>
+    </section>
+
+    <section class="view" id="view-agenda">
+      <div class="toolbar"><div class="search"><input id="agendaSearch" placeholder="Buscar compromisso"></div><button class="btn btn-primary" data-modal="event">＋ Novo compromisso</button></div>
+      <div class="card"><div class="section-head"><h2>Próximos compromissos</h2><span class="small muted">Ordenados por data</span></div><div id="agendaList"></div></div>
+    </section>
+
+    <section class="view" id="view-finance">
+      <div class="toolbar"><select id="financeWorkFilter"><option value="all">Todas as obras</option></select><button class="btn btn-primary" data-modal="transaction">＋ Registrar movimentação</button></div>
+      <div class="grid stats">
+        <div class="card"><span class="small muted">Total contratado</span><h2 data-money id="finContracted">R$ 0,00</h2></div>
+        <div class="card"><span class="small muted">Total recebido</span><h2 class="money-in" data-money id="finReceived">R$ 0,00</h2></div>
+        <div class="card"><span class="small muted">Despesas registradas</span><h2 class="money-out" data-money id="finExpenses">R$ 0,00</h2></div>
+        <div class="card"><span class="small muted">Saldo a receber</span><h2 data-money id="finBalance">R$ 0,00</h2></div>
+      </div>
+      <div class="card"><div class="section-head"><h2>Movimentações</h2><span class="small muted">Recebimentos e despesas</span></div><div id="transactionList"></div></div>
+    </section>
+
+    <section class="view" id="view-history">
+      <div class="toolbar"><div class="search"><input id="historySearch" placeholder="Buscar obra ou cliente"></div><select id="historyMonth"><option value="all">Todos os meses</option></select><select id="historyYear"><option value="all">Todos os anos</option></select></div>
+      <div class="card"><div class="section-head"><h2>Obras finalizadas</h2><span class="small muted" id="historyCount">0 obras</span></div><div id="historyList"></div></div>
+    </section>
+  </main>
+</div>
+
+<nav class="bottom-nav" id="bottomNav">
+  <button class="active" data-view="dashboard"><span>⌂</span>Painel</button>
+  <button data-view="clients"><span>♙</span>Clientes</button>
+  <button data-view="quotes"><span>▤</span>Orçamentos</button>
+  <button data-view="works"><span>⌂</span>Obras</button>
+  <button data-view="agenda"><span>▦</span>Agenda</button>
+  <button id="moreBtn"><span>☰</span>Mais</button>
+</nav>
+<div id="moreMenu" style="display:none;position:fixed;right:12px;bottom:78px;z-index:20;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:8px;min-width:170px">
+  <button class="btn btn-block" data-view="finance" style="margin-bottom:6px">$ Financeiro</button>
+  <button class="btn btn-block" data-view="history">◷ Histórico</button>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h2 id="modalTitle">Novo cadastro</h2><button class="close" id="closeModal">×</button></div>
+    <form id="modalForm"><div class="modal-body"><div class="form-grid" id="modalFields"></div></div><div class="modal-foot"><button type="button" class="btn" id="cancelModal">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form>
+  </div>
+</div>
+
+<script>
+(() => {
+  const KEY='gestaoObras_v1';
+  const today=()=>new Date().toISOString().slice(0,10);
+  const money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n||0));
+  const dateBR=s=>s?new Date(s+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+  const uid=()=>Math.random().toString(36).slice(2,10);
+  const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const initial={
+    clients:[],quotes:[],works:[],events:[],transactions:[],tasks:[],entries:[]
+  };
+  let db=load(),activeView='dashboard',showMoney=true,modalType=null;
+  function load(){try{return {...initial,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...initial}}}
+  function save(){localStorage.setItem(KEY,JSON.stringify(db));render()}
+  function sum(arr,fn){return arr.reduce((a,x)=>a+Number(fn(x)||0),0)}
+  function clientName(id){return db.clients.find(c=>c.id===id)?.name||'Cliente não identificado'}
+  function workName(id){return db.works.find(w=>w.id===id)?.name||'Obra não identificada'}
+  function statusClass(s){return s==='Em andamento'||s==='Aprovado'||s==='Recebido'?'b-green':s==='Pendente'||s==='Em negociação'||s==='Aguardando início'?'b-yellow':s==='Recusado'?'b-red':s==='Serviço concluído'?'b-blue':'b-gray'}
+  function badge(s){return `<span class="badge ${statusClass(s)}">${escapeHTML(s)}</span>`}
+  function val(n){return showMoney?money(n):'••••••'}
+  function setView(v){
+    activeView=v;
+    document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));
+    document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));
+    const names={dashboard:'Painel',clients:'Clientes',quotes:'Orçamentos',works:'Obras',agenda:'Agenda',finance:'Financeiro',history:'Histórico'};
+    document.getElementById('pageTitle').textContent=names[v];document.getElementById('crumb').textContent=names[v];
+    window.scrollTo({top:0,behavior:'smooth'});render();
+  }
+  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{setView(b.dataset.view);document.getElementById('moreMenu').style.display='none'}));
+  document.getElementById('moreBtn').addEventListener('click',()=>{const m=document.getElementById('moreMenu');m.style.display=m.style.display==='none'?'block':'none'});
+  document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.go)));
+  document.getElementById('globalEye').addEventListener('click',()=>{showMoney=!showMoney;document.getElementById('globalEye').textContent=showMoney?'◉ Valores visíveis':'◎ Valores ocultos';render()});
+  document.addEventListener('click',e=>{if(e.target.closest('[data-eye]')){showMoney=!showMoney;render()}});
+  const fields={
+    client:[['name','Nome do cliente','text',true],['phone','WhatsApp / telefone','tel',false],['address','Endereço','text',false],['notes','Observações','textarea',false]],
+    quote:[['clientId','Cliente','client',true],['service','Serviço / descrição','text',true],['amount','Valor proposto (R$)','number',false],['validUntil','Validade do orçamento','date',false],['status','Situação','select: Pendente|Em negociação|Aprovado|Recusado',false],['notes','Observações','textarea',false]],
+    work:[['clientId','Cliente','client',true],['name','Nome da obra','text',true],['service','Serviço principal','text',false],['amount','Valor contratado (R$)','number',false],['startDate','Data de início','date',false],['endDate','Previsão de término','date',false],['deposit','Valor já recebido (R$)','number',false],['helperCost','Custo previsto de ajudante (R$)','number',false],['toolCost','Ferramentas (R$)','number',false],['notes','Observações','textarea',false]],
+    event:[['title','Compromisso','text',true],['date','Data','date',true],['time','Horário','time',false],['clientId','Cliente (opcional)','client',false],['workId','Obra (opcional)','work',false],['notes','Observações','textarea',false]],
+    transaction:[['workId','Obra','work',true],['type','Tipo','select: Recebimento|Despesa',true],['category','Categoria','select: Pagamento do cliente|Ajudante|Ferramenta|Outra despesa',true],['description','Descrição','text',true],['amount','Valor (R$)','number',true],['date','Data','date',true]],
+    entry:[['workId','Obra','work',true],['date','Data do registro','date',true],['done','O que foi feito hoje?','textarea',false],['pending','O que ficou pendente?','textarea',false],['next','O que precisa ser feito depois?','textarea',false]]
+  };
+  function openModal(type){
+    modalType=type;const title={client:'Novo cliente',quote:'Novo orçamento',work:'Nova obra',event:'Novo compromisso',transaction:'Registrar movimentação',entry:'Novo registro do diário'}[type];
+    document.getElementById('modalTitle').textContent=title;
+    const html=fields[type].map(([name,label,kind,required])=>{
+      let control='';
+      if(kind==='client'||kind==='work'){
+        const list=kind==='client'?db.clients:db.works;
+        control=`<select name="${name}" ${required?'required':''}><option value="">Selecione</option>${list.map(x=>`<option value="${x.id}">${escapeHTML(kind==='client'?x.name:x.name)}</option>`).join('')}</select>`;
+      }else if(kind.startsWith('select:')){
+        control=`<select name="${name}" ${required?'required':''}>${kind.split(': ')[1].split('|').map(x=>`<option>${x}</option>`).join('')}</select>`;
+      }else if(kind==='textarea')control=`<textarea name="${name}" ${required?'required':''}></textarea>`;
+      else control=`<input name="${name}" type="${kind}" ${required?'required':''} ${kind==='number'?'min="0" step="0.01"':''} ${kind==='date'&&name==='date'?`value="${today()}"`:''}>`;
+      return `<div class="field ${kind==='textarea'?'full':''}"><label>${label}${required?' *':''}</label>${control}</div>`;
+    }).join('');
+    document.getElementById('modalFields').innerHTML=html;
+    document.getElementById('modalBackdrop').classList.add('open');
+  }
+  function closeModal(){document.getElementById('modalBackdrop').classList.remove('open');document.getElementById('modalForm').reset();modalType=null}
+  document.querySelectorAll('[data-modal]').forEach(b=>b.addEventListener('click',()=>openModal(b.dataset.modal)));
+  document.getElementById('closeModal').onclick=closeModal;document.getElementById('cancelModal').onclick=closeModal;
+  document.getElementById('modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal()});
+  document.getElementById('modalForm').addEventListener('submit',e=>{
+    e.preventDefault();const fd=new FormData(e.target),o=Object.fromEntries(fd.entries());o.id=uid();
+    if('amount'in o)o.amount=Number(o.amount||0);if('deposit'in o)o.deposit=Number(o.deposit||0);
+    if(modalType==='client')db.clients.push(o);
+    if(modalType==='quote'){o.status=o.status||'Pendente';db.quotes.push(o)}
+    if(modalType==='work'){o.status='Aguardando início';o.progress=0;o.deposit=Number(o.deposit||0);o.helperCost=Number(o.helperCost||0);o.toolCost=Number(o.toolCost||0);db.works.push(o)}
+    if(modalType==='event')db.events.push(o);
+    if(modalType==='transaction')db.transactions.push(o);
+    if(modalType==='entry')db.entries.push(o);
+    closeModal();save();
+  });
+  function render(){
+    renderDashboard();renderClients();renderQuotes();renderWorks();renderAgenda();renderFinance();renderHistory();populateSelects();
+  }
+  function renderDashboard(){
+    const active=db.works.filter(w=>w.status==='Em andamento').length;
+    document.getElementById('statWorks').textContent=active;
+    document.getElementById('statQuotes').textContent=db.quotes.filter(q=>['Pendente','Em negociação'].includes(q.status)).length;
+    document.getElementById('statToday').textContent=db.events.filter(e=>e.date===today()).length;
+    document.getElementById('statTasks').textContent=db.tasks.filter(t=>!t.done).length+db.entries.filter(e=>e.pending).length;
+    const todays=db.events.filter(e=>e.date===today()).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    document.getElementById('todayList').innerHTML=todays.length?todays.map(e=>`<div class="agenda-item"><span class="time">${escapeHTML(e.time||'—')}</span><div class="item-main"><strong>${escapeHTML(e.title)}</strong><small>${escapeHTML(clientName(e.clientId))}</small></div></div>`).join(''):'<div class="empty">Nenhum compromisso para hoje.</div>';
+    const works=db.works.filter(w=>w.status==='Em andamento').slice(0,4);
+    document.getElementById('dashboardWorks').innerHTML=works.length?works.map(w=>`<div class="project-row"><div class="project-top"><strong>${escapeHTML(w.name)}</strong>${badge(w.status)}</div><small class="muted">${escapeHTML(clientName(w.clientId))}</small><div class="progress"><span style="width:${Math.min(100,Number(w.progress||0))}%"></span></div><small class="muted">${Number(w.progress||0)}% concluído</small></div>`).join(''):'<div class="empty">Nenhuma obra em andamento.</div>';
+    const now=new Date();const monthTx=db.transactions.filter(t=>{const d=new Date((t.date||'')+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
+    const contracted=sum(db.works,w=>w.amount),received=sum(monthTx.filter(t=>t.type==='Recebimento'),t=>t.amount),expenses=sum(monthTx.filter(t=>t.type==='Despesa'),t=>t.amount);
+    setText('monthContracted',val(contracted));setText('monthReceived',val(received));setText('monthExpenses',val(expenses));
+    const reminders=db.entries.filter(e=>e.pending||e.next).slice(-4).reverse();
+    document.getElementById('dashboardTasks').innerHTML=reminders.length?reminders.map(e=>`<div class="list-item"><div class="item-main"><strong>${escapeHTML(workName(e.workId))}</strong><small>${escapeHTML(e.pending||e.next)}</small></div></div>`).join(''):'<div class="empty">Nenhuma pendência registrada.</div>';
+  }
+  function setText(id,v){document.getElementById(id).textContent=v}
+  function renderClients(){
+    const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
+    const activeOnly=document.querySelector('[data-client-filter].active')?.dataset.clientFilter==='active';
+    const list=db.clients.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q)&&(!activeOnly||db.works.some(w=>w.clientId===c.id&&w.status==='Em andamento')));
+    document.getElementById('clientList').innerHTML=list.length?list.map(c=>`<div class="data-row"><div class="avatar">${escapeHTML(c.name.slice(0,1).toUpperCase())}</div><div class="data-content"><strong>${escapeHTML(c.name)}</strong><small>${escapeHTML(c.phone||'Telefone não informado')} · ${escapeHTML(c.address||'Endereço não informado')}</small></div><div class="row-end"><span class="badge b-blue">${db.works.filter(w=>w.clientId===c.id).length} obra(s)</span></div></div>`).join(''):'<div class="empty">Nenhum cliente cadastrado. Use “Novo cliente” para começar.</div>';
+  }
+  function renderQuotes(){
+    const q=(document.getElementById('quoteSearch')?.value||'').toLowerCase(),f=document.querySelector('[data-quote-filter].active')?.dataset.quoteFilter||'all';
+    const list=db.quotes.filter(x=>(x.service+' '+clientName(x.clientId)).toLowerCase().includes(q)&&(f==='all'||x.status===f));
+    document.getElementById('quoteList').innerHTML=list.length?list.map(x=>`<div class="data-row"><div class="avatar">▤</div><div class="data-content"><strong>${escapeHTML(x.service)}</strong><small>${escapeHTML(clientName(x.clientId))} · Validade: ${dateBR(x.validUntil)}</small></div><div class="row-end"><div><div class="money" data-money>${val(x.amount)}</div>${badge(x.status)}</div><button class="btn btn-small" data-quote-approve="${x.id}" ${x.status==='Aprovado'?'disabled':''}>Aprovar</button></div></div>`).join(''):'<div class="empty">Nenhum orçamento encontrado.</div>';
+  }
+  function renderWorks(){
+    const q=(document.getElementById('workSearch')?.value||'').toLowerCase(),f=document.querySelector('[data-work-filter].active')?.dataset.workFilter||'all';
+    const list=db.works.filter(w=>(w.name+' '+clientName(w.clientId)).toLowerCase().includes(q)&&(f==='all'||w.status===f));
+    document.getElementById('workList').innerHTML=list.length?list.map(w=>`<div class="data-row"><div class="avatar">⌂</div><div class="data-content"><strong>${escapeHTML(w.name)}</strong><small>${escapeHTML(clientName(w.clientId))} · ${escapeHTML(w.service||'Serviço não especificado')}</small><div class="progress"><span style="width:${Number(w.progress||0)}%"></span></div><small>${Number(w.progress||0)}% do serviço registrado</small></div><div class="row-end"><div>${badge(w.status)}<div class="money" data-money>${val(w.amount)}</div></div><button class="btn btn-small" data-work-detail="${w.id}">Abrir</button></div></div>`).join(''):'<div class="empty">Nenhuma obra encontrada.</div>';
+  }
+  function renderAgenda(){
+    const q=(document.getElementById('agendaSearch')?.value||'').toLowerCase();
+    const list=db.events.filter(e=>(e.title+' '+(e.notes||'')+' '+clientName(e.clientId)).toLowerCase().includes(q)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+    document.getElementById('agendaList').innerHTML=list.length?list.map(e=>`<div class="list-item"><span class="time">${dateBR(e.date)}<br>${escapeHTML(e.time||'')}</span><div class="item-main"><strong>${escapeHTML(e.title)}</strong><small>${escapeHTML(clientName(e.clientId))} ${e.notes?'· '+escapeHTML(e.notes):''}</small></div><button class="btn btn-small" data-event-done="${e.id}">Concluir</button></div>`).join(''):'<div class="empty">Nenhum compromisso cadastrado.</div>';
+  }
+  function renderFinance(){
+    const filter=document.getElementById('financeWorkFilter')?.value||'all';
+    const works=filter==='all'?db.works:db.works.filter(w=>w.id===filter);
+    const ids=works.map(w=>w.id),tx=db.transactions.filter(t=>ids.includes(t.workId));
+    const contracted=sum(works,w=>w.amount),received=sum(tx.filter(t=>t.type==='Recebimento'),t=>t.amount),expenses=sum(tx.filter(t=>t.type==='Despesa'),t=>t.amount);
+    setText('finContracted',val(contracted));setText('finReceived',val(received));setText('finExpenses',val(expenses));setText('finBalance',val(contracted-received));
+    document.getElementById('transactionList').innerHTML=tx.length?tx.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<div class="list-item"><span class="time">${dateBR(t.date)}</span><div class="item-main"><strong>${escapeHTML(t.description)}</strong><small>${escapeHTML(workName(t.workId))} · ${escapeHTML(t.category)}</small></div><strong class="${t.type==='Recebimento'?'money-in':'money-out'}" data-money>${val(t.amount)}</strong></div>`).join(''):'<div class="empty">Nenhuma movimentação registrada.</div>';
+  }
+  function renderHistory(){
+    const q=(document.getElementById('historySearch')?.value||'').toLowerCase();
+    const list=db.works.filter(w=>w.status==='Finalizada'&&(w.name+' '+clientName(w.clientId)).toLowerCase().includes(q));
+    document.getElementById('historyCount').textContent=list.length+' obra(s)';
+    document.getElementById('historyList').innerHTML=list.length?list.sort((a,b)=>(b.finishedAt||'').localeCompare(a.finishedAt||'')).map(w=>`<div class="data-row"><div class="avatar">✓</div><div class="data-content"><strong>${escapeHTML(w.name)}</strong><small>${escapeHTML(clientName(w.clientId))} · Finalizada em ${dateBR(w.finishedAt)}</small></div><div class="row-end"><strong class="money" data-money>${val(w.amount)}</strong></div></div>`).join(''):'<div class="empty">As obras finalizadas aparecerão aqui.</div>';
+  }
+  function populateSelects(){
+    const f=document.getElementById('financeWorkFilter'),old=f.value;
+    f.innerHTML='<option value="all">Todas as obras</option>'+db.works.map(w=>`<option value="${w.id}">${escapeHTML(w.name)}</option>`).join('');
+    if([...f.options].some(o=>o.value===old))f.value=old;
+  }
+  document.addEventListener('click',e=>{
+    const a=e.target.closest('[data-quote-approve]');if(a){const q=db.quotes.find(x=>x.id===a.dataset.quoteApprove);if(q){q.status='Aprovado';const existing=db.works.some(w=>w.quoteId===q.id);if(!existing){db.works.push({id:uid(),quoteId:q.id,clientId:q.clientId,name:q.service,service:q.service,amount:q.amount||0,status:'Aguardando início',progress:0,startDate:'',endDate:'',deposit:0,helperCost:0,toolCost:0})}save();}}
+    const ev=e.target.closest('[data-event-done]');if(ev){db.events=db.events.filter(x=>x.id!==ev.dataset.eventDone);save()}
+    const wd=e.target.closest('[data-work-detail]');if(wd){const w=db.works.find(x=>x.id===wd.dataset.workDetail);if(w)openWorkDetail(w)}
+  });
+  function openWorkDetail(w){
+    const backdrop=document.getElementById('modalBackdrop');modalType='detail';
+    document.getElementById('modalTitle').textContent=w.name;
+    const tx=db.transactions.filter(t=>t.workId===w.id),received=sum(tx.filter(t=>t.type==='Recebimento'),t=>t.amount),expenses=sum(tx.filter(t=>t.type==='Despesa'),t=>t.amount);
+    document.getElementById('modalFields').innerHTML=`
+      <div class="field full"><label>Cliente</label><input value="${escapeHTML(clientName(w.clientId))}" disabled></div>
+      <div class="field"><label>Status</label><select id="editStatus"><option ${w.status==='Aguardando início'?'selected':''}>Aguardando início</option><option ${w.status==='Em andamento'?'selected':''}>Em andamento</option><option ${w.status==='Serviço concluído'?'selected':''}>Serviço concluído</option><option ${w.status==='Finalizada'?'selected':''}>Finalizada</option></select></div>
+      <div class="field"><label>Progresso (%)</label><input id="editProgress" type="number" min="0" max="100" value="${Number(w.progress||0)}"></div>
+      <div class="field"><label>Valor contratado</label><input value="${money(w.amount)}" disabled></div>
+      <div class="field"><label>Recebido</label><input value="${money(received)}" disabled></div>
+      <div class="field"><label>Despesas</label><input value="${money(expenses)}" disabled></div>
+      <div class="field full"><label>Observações</label><textarea id="editNotes">${escapeHTML(w.notes||'')}</textarea></div>
+      <div class="field full"><label>Diário da obra</label><div class="card" style="box-shadow:none;padding:10px">${db.entries.filter(x=>x.workId===w.id).length?db.entries.filter(x=>x.workId===w.id).slice().reverse().map(x=>`<div class="list-item"><div class="item-main"><strong>${dateBR(x.date)}</strong><small>${escapeHTML(x.done||x.pending||x.next||'Registro sem descrição')}</small></div></div>`).join(''):'<span class="small muted">Nenhum registro diário ainda.</span>'}</div></div>
+      <div class="field full"><button type="button" class="btn btn-block" id="addEntryFromDetail">＋ Registrar no diário</button></div>
+      <div class="field full"><button type="button" class="btn btn-success btn-block" id="finishWork">Finalizar obra (confirmar recebimento integral)</button></div>`;
+    document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();w.status=document.getElementById('editStatus').value;w.progress=Math.max(0,Math.min(100,Number(document.getElementById('editProgress').value||0)));w.notes=document.getElementById('editNotes').value;closeModal();document.getElementById('modalForm').onsubmit=null;save()};
+    backdrop.classList.add('open');
+    document.getElementById('addEntryFromDetail').onclick=()=>{closeModal();openModal('entry');const sel=document.querySelector('#modalFields select[name="workId"]');if(sel)sel.value=w.id};
+    document.getElementById('finishWork').onclick=()=>{if(confirm('Confirma que o serviço foi concluído e que recebeu todo o valor combinado?')){w.status='Finalizada';w.progress=100;w.finishedAt=today();closeModal();document.getElementById('modalForm').onsubmit=null;save()}};
+  }
+  ['clientSearch','quoteSearch','workSearch','agendaSearch','historySearch'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+  document.querySelectorAll('[data-client-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-client-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderClients()});
+  document.querySelectorAll('[data-quote-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-quote-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderQuotes()});
+  document.querySelectorAll('[data-work-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-work-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderWorks()});
+  document.getElementById('financeWorkFilter').addEventListener('change',renderFinance);
+  document.getElementById('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-gestao-de-obras.json';a.click();URL.revokeObjectURL(a.href)};
+  render();
+})();
+</script>
+</body>
+</html>
