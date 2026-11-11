@@ -153,7 +153,7 @@
 
     <section class="view" id="view-quotes">
       <div class="toolbar"><div class="search"><input id="quoteSearch" placeholder="Buscar orçamento ou cliente"></div><select id="quotePeriod"><option value="month">Este mês</option><option value="all">Todos os períodos</option></select><button class="btn btn-primary" data-modal="quote">＋ Novo orçamento</button></div>
-      <div class="filters"><button class="filter active" data-quote-filter="all">Todos</button><button class="filter" data-quote-filter="Visita agendada">Visita agendada</button><button class="filter" data-quote-filter="Aguardando resposta">Aguardando resposta</button><button class="filter" data-quote-filter="Aprovado">Aprovados</button><button class="filter" data-quote-filter="Não aprovado">Não aprovados</button></div>
+      <div class="filters"><button class="filter active" data-quote-filter="all">Todos</button><button class="filter" data-quote-filter="Visita agendada">Visitas agendadas</button><button class="filter" data-quote-filter="Em elaboração">Em elaboração</button><button class="filter" data-quote-filter="Aguardando resposta">Aguardando resposta</button><button class="filter" data-quote-filter="Em negociação">Em negociação</button><button class="filter" data-quote-filter="Aprovado">Aprovados</button><button class="filter" data-quote-filter="Não aprovado">Não aprovados</button></div>
       <div class="grid stats" id="quoteSummary"></div><div class="card data-card" id="quoteList"></div>
     </section>
 
@@ -219,7 +219,16 @@
   };
   let db=load(),activeView='dashboard',showMoney=true,modalType=null;
   function load(){try{return {...initial,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...initial}}}
-  function save(){localStorage.setItem(KEY,JSON.stringify(db));render()}
+  function save(){
+    try {
+      localStorage.setItem(KEY, JSON.stringify(db));
+      render();
+      return true;
+    } catch (error) {
+      alert('Não foi possível salvar neste navegador. Verifique o espaço disponível ou exporte um backup. Detalhe: ' + error.message);
+      return false;
+    }
+  }
   function sum(arr,fn){return arr.reduce((a,x)=>a+Number(fn(x)||0),0)}
   function clientName(id){return db.clients.find(c=>c.id===id)?.name||'Cliente não identificado'}
   function workName(id){return db.works.find(w=>w.id===id)?.name||'Obra não identificada'}
@@ -240,7 +249,7 @@
   document.getElementById('globalEye').addEventListener('click',()=>{showMoney=!showMoney;document.getElementById('globalEye').textContent=showMoney?'◉ Valores visíveis':'◎ Valores ocultos';render()});
   document.addEventListener('click',e=>{if(e.target.closest('[data-eye]')){showMoney=!showMoney;render()}});
   const fields={
-    client:[['name','Nome do cliente','text',true],['phone','WhatsApp / telefone','tel',false],['address','Endereço completo para a visita','text',true],['requestedService','O que o cliente deseja fazer?','textarea',true],['visitDate','Data da visita para orçamento','date',false],['visitTime','Horário da visita','time',false],['notes','Observações','textarea',false]],
+    client:[['name','Nome do cliente','text',true],['phone','WhatsApp / telefone','tel',false],['address','Endereço completo para a visita','text',true],['requestedService','O que o cliente deseja fazer?','textarea',true],['visitDate','Data da visita para orçamento','date',true],['visitTime','Horário da visita','time',false],['notes','Observações','textarea',false]],
     quote:[['clientId','Cliente','client',true],['service','Serviços / descrição do orçamento','textarea',true],['amount','Valor proposto (R$)','number',false],['validUntil','Validade do orçamento','date',false],['status','Situação','select: Em elaboração|Aguardando resposta|Em negociação|Aprovado|Não aprovado',false],['notes','Observações e condições','textarea',false]],
     work:[['clientId','Cliente','client',true],['name','Nome da obra','text',true],['service','Serviço principal','text',false],['amount','Valor contratado (R$)','number',false],['startDate','Data de início','date',false],['endDate','Previsão de término','date',false],['deposit','Valor já recebido (R$)','number',false],['helperCost','Custo previsto de ajudante (R$)','number',false],['toolCost','Ferramentas (R$)','number',false],['notes','Observações','textarea',false]],
     event:[['title','Compromisso','text',true],['date','Data','date',true],['time','Horário','time',false],['clientId','Cliente (opcional)','client',false],['workId','Obra (opcional)','work',false],['notes','Observações','textarea',false]],
@@ -272,17 +281,41 @@
     e.preventDefault();const fd=new FormData(e.target),o=Object.fromEntries(fd.entries());o.id=uid();
     if('amount'in o)o.amount=Number(o.amount||0);if('deposit'in o)o.deposit=Number(o.deposit||0);
     if(modalType==='client'){
-      o.createdAt=today();db.clients.push(o);
-      const quote={id:uid(),clientId:o.id,service:o.requestedService||'Orçamento a realizar',amount:0,status:o.visitDate?'Visita agendada':'Novo contato',visitDate:o.visitDate||'',visitTime:o.visitTime||'',notes:o.notes||'',createdAt:today()};
+      o.createdAt=today();
+      o.status='Novo contato';
+      db.clients.push(o);
+
+      // Todo novo cliente começa como uma oportunidade de orçamento.
+      const quote={
+        id:uid(), clientId:o.id,
+        service:o.requestedService,
+        amount:0,
+        status:'Visita agendada',
+        visitDate:o.visitDate,
+        visitTime:o.visitTime||'',
+        address:o.address||'',
+        notes:o.notes||'',
+        createdAt:today()
+      };
       db.quotes.push(quote);
-      if(o.visitDate){db.events.push({id:uid(),title:'Visita para orçamento — '+o.name,date:o.visitDate,time:o.visitTime||'',clientId:o.id,notes:'Endereço: '+(o.address||'')+' | Serviço: '+(o.requestedService||'')});}
+
+      // A visita é criada automaticamente na agenda.
+      db.events.push({
+        id:uid(),
+        title:'Visita para orçamento — '+o.name,
+        date:o.visitDate,
+        time:o.visitTime||'',
+        clientId:o.id,
+        quoteId:quote.id,
+        notes:'Endereço: '+(o.address||'')+' | Serviço: '+(o.requestedService||'')
+      });
     }
     if(modalType==='quote'){o.status=o.status||'Em elaboração';o.createdAt=today();db.quotes.push(o)}
     if(modalType==='work'){o.status='Aguardando início';o.progress=0;o.deposit=Number(o.deposit||0);o.helperCost=Number(o.helperCost||0);o.toolCost=Number(o.toolCost||0);db.works.push(o)}
     if(modalType==='event')db.events.push(o);
     if(modalType==='transaction')db.transactions.push(o);
     if(modalType==='entry')db.entries.push(o);
-    closeModal();save();
+    const saved=save(); if(saved) closeModal();
   });
   function render(){
     renderDashboard();renderClients();renderQuotes();renderWorks();renderAgenda();renderFinance();renderHistory();populateSelects();
@@ -362,9 +395,21 @@
       <div class="field"><label>WhatsApp / telefone</label><input id="cePhone" value="${escapeHTML(c.phone||'')}"></div>
       <div class="field full"><label>Endereço</label><input id="ceAddress" value="${escapeHTML(c.address||'')}"></div>
       <div class="field full"><label>Serviço solicitado inicialmente</label><textarea id="ceService">${escapeHTML(c.requestedService||'')}</textarea></div>
+      <div class="field"><label>Data da visita para orçamento</label><input id="ceVisitDate" type="date" value="${c.visitDate||''}"></div>
+      <div class="field"><label>Horário da visita</label><input id="ceVisitTime" type="time" value="${c.visitTime||''}"></div>
       <div class="field full"><label>Observações</label><textarea id="ceNotes">${escapeHTML(c.notes||'')}</textarea></div>
       <div class="field full"><label>Histórico de orçamentos</label><div class="card" style="box-shadow:none;padding:10px">${db.quotes.filter(q=>q.clientId===c.id).map(q=>`<div class="list-item"><div class="item-main"><strong>${escapeHTML(q.service)}</strong><small>${escapeHTML(q.status)} · ${q.amount?money(q.amount):'Valor ainda não definido'}</small></div></div>`).join('')||'<span class="small muted">Nenhum orçamento registrado.</span>'}</div></div>`;
-    document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();c.name=document.getElementById('ceName').value.trim();c.phone=document.getElementById('cePhone').value.trim();c.address=document.getElementById('ceAddress').value.trim();c.requestedService=document.getElementById('ceService').value;c.notes=document.getElementById('ceNotes').value;closeModal();document.getElementById('modalForm').onsubmit=null;save()};
+    document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();c.name=document.getElementById('ceName').value.trim();c.phone=document.getElementById('cePhone').value.trim();c.address=document.getElementById('ceAddress').value.trim();c.requestedService=document.getElementById('ceService').value;c.visitDate=document.getElementById('ceVisitDate').value;c.visitTime=document.getElementById('ceVisitTime').value;c.notes=document.getElementById('ceNotes').value;
+      let q=db.quotes.find(x=>x.clientId===c.id&&['Visita agendada','Novo contato'].includes(x.status));
+      if(!q){q={id:uid(),clientId:c.id,service:c.requestedService||'Orçamento a realizar',amount:0,status:'Visita agendada',createdAt:today()};db.quotes.push(q)}
+      q.service=c.requestedService||q.service;q.visitDate=c.visitDate;q.visitTime=c.visitTime;q.address=c.address;
+      let ev=db.events.find(x=>x.quoteId===q.id);
+      if(c.visitDate){
+        if(!ev){ev={id:uid(),clientId:c.id,quoteId:q.id};db.events.push(ev)}
+        ev.title='Visita para orçamento — '+c.name;ev.date=c.visitDate;ev.time=c.visitTime||'';ev.notes='Endereço: '+(c.address||'')+' | Serviço: '+(c.requestedService||'');
+        q.status='Visita agendada';
+      }else if(ev){db.events=db.events.filter(x=>x.id!==ev.id);q.status='Novo contato'}
+      closeModal();document.getElementById('modalForm').onsubmit=null;save()};
     document.getElementById('modalBackdrop').classList.add('open');
   }
   function openQuoteDetail(q){
