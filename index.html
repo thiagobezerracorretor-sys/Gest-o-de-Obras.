@@ -152,9 +152,9 @@
     </section>
 
     <section class="view" id="view-quotes">
-      <div class="toolbar"><div class="search"><input id="quoteSearch" placeholder="Buscar orçamento ou cliente"></div><button class="btn btn-primary" data-modal="quote">＋ Novo orçamento</button></div>
-      <div class="filters"><button class="filter active" data-quote-filter="all">Todos</button><button class="filter" data-quote-filter="Pendente">Pendente</button><button class="filter" data-quote-filter="Em negociação">Em negociação</button><button class="filter" data-quote-filter="Aprovado">Aprovados</button><button class="filter" data-quote-filter="Recusado">Recusados</button></div>
-      <div class="card data-card" id="quoteList"></div>
+      <div class="toolbar"><div class="search"><input id="quoteSearch" placeholder="Buscar orçamento ou cliente"></div><select id="quotePeriod"><option value="month">Este mês</option><option value="all">Todos os períodos</option></select><button class="btn btn-primary" data-modal="quote">＋ Novo orçamento</button></div>
+      <div class="filters"><button class="filter active" data-quote-filter="all">Todos</button><button class="filter" data-quote-filter="Visita agendada">Visita agendada</button><button class="filter" data-quote-filter="Aguardando resposta">Aguardando resposta</button><button class="filter" data-quote-filter="Aprovado">Aprovados</button><button class="filter" data-quote-filter="Não aprovado">Não aprovados</button></div>
+      <div class="grid stats" id="quoteSummary"></div><div class="card data-card" id="quoteList"></div>
     </section>
 
     <section class="view" id="view-works">
@@ -223,7 +223,7 @@
   function sum(arr,fn){return arr.reduce((a,x)=>a+Number(fn(x)||0),0)}
   function clientName(id){return db.clients.find(c=>c.id===id)?.name||'Cliente não identificado'}
   function workName(id){return db.works.find(w=>w.id===id)?.name||'Obra não identificada'}
-  function statusClass(s){return s==='Em andamento'||s==='Aprovado'||s==='Recebido'?'b-green':s==='Pendente'||s==='Em negociação'||s==='Aguardando início'?'b-yellow':s==='Recusado'?'b-red':s==='Serviço concluído'?'b-blue':'b-gray'}
+  function statusClass(s){return s==='Em andamento'||s==='Aprovado'||s==='Recebido'?'b-green':s==='Pendente'||s==='Em negociação'||s==='Aguardando início'||s==='Novo contato'?'b-yellow':s==='Recusado'||s==='Não aprovado'?'b-red':s==='Serviço concluído'||s==='Visita agendada'||s==='Em elaboração'?'b-blue':'b-gray'}
   function badge(s){return `<span class="badge ${statusClass(s)}">${escapeHTML(s)}</span>`}
   function val(n){return showMoney?money(n):'••••••'}
   function setView(v){
@@ -240,15 +240,15 @@
   document.getElementById('globalEye').addEventListener('click',()=>{showMoney=!showMoney;document.getElementById('globalEye').textContent=showMoney?'◉ Valores visíveis':'◎ Valores ocultos';render()});
   document.addEventListener('click',e=>{if(e.target.closest('[data-eye]')){showMoney=!showMoney;render()}});
   const fields={
-    client:[['name','Nome do cliente','text',true],['phone','WhatsApp / telefone','tel',false],['address','Endereço','text',false],['notes','Observações','textarea',false]],
-    quote:[['clientId','Cliente','client',true],['service','Serviço / descrição','text',true],['amount','Valor proposto (R$)','number',false],['validUntil','Validade do orçamento','date',false],['status','Situação','select: Pendente|Em negociação|Aprovado|Recusado',false],['notes','Observações','textarea',false]],
+    client:[['name','Nome do cliente','text',true],['phone','WhatsApp / telefone','tel',false],['address','Endereço completo para a visita','text',true],['requestedService','O que o cliente deseja fazer?','textarea',true],['visitDate','Data da visita para orçamento','date',false],['visitTime','Horário da visita','time',false],['notes','Observações','textarea',false]],
+    quote:[['clientId','Cliente','client',true],['service','Serviços / descrição do orçamento','textarea',true],['amount','Valor proposto (R$)','number',false],['validUntil','Validade do orçamento','date',false],['status','Situação','select: Em elaboração|Aguardando resposta|Em negociação|Aprovado|Não aprovado',false],['notes','Observações e condições','textarea',false]],
     work:[['clientId','Cliente','client',true],['name','Nome da obra','text',true],['service','Serviço principal','text',false],['amount','Valor contratado (R$)','number',false],['startDate','Data de início','date',false],['endDate','Previsão de término','date',false],['deposit','Valor já recebido (R$)','number',false],['helperCost','Custo previsto de ajudante (R$)','number',false],['toolCost','Ferramentas (R$)','number',false],['notes','Observações','textarea',false]],
     event:[['title','Compromisso','text',true],['date','Data','date',true],['time','Horário','time',false],['clientId','Cliente (opcional)','client',false],['workId','Obra (opcional)','work',false],['notes','Observações','textarea',false]],
     transaction:[['workId','Obra','work',true],['type','Tipo','select: Recebimento|Despesa',true],['category','Categoria','select: Pagamento do cliente|Ajudante|Ferramenta|Outra despesa',true],['description','Descrição','text',true],['amount','Valor (R$)','number',true],['date','Data','date',true]],
     entry:[['workId','Obra','work',true],['date','Data do registro','date',true],['done','O que foi feito hoje?','textarea',false],['pending','O que ficou pendente?','textarea',false],['next','O que precisa ser feito depois?','textarea',false]]
   };
   function openModal(type){
-    modalType=type;const title={client:'Novo cliente',quote:'Novo orçamento',work:'Nova obra',event:'Novo compromisso',transaction:'Registrar movimentação',entry:'Novo registro do diário'}[type];
+    modalType=type;const title={client:'Novo cliente e visita para orçamento',quote:'Novo orçamento',work:'Nova obra',event:'Novo compromisso',transaction:'Registrar movimentação',entry:'Novo registro do diário'}[type];
     document.getElementById('modalTitle').textContent=title;
     const html=fields[type].map(([name,label,kind,required])=>{
       let control='';
@@ -271,8 +271,13 @@
   document.getElementById('modalForm').addEventListener('submit',e=>{
     e.preventDefault();const fd=new FormData(e.target),o=Object.fromEntries(fd.entries());o.id=uid();
     if('amount'in o)o.amount=Number(o.amount||0);if('deposit'in o)o.deposit=Number(o.deposit||0);
-    if(modalType==='client')db.clients.push(o);
-    if(modalType==='quote'){o.status=o.status||'Pendente';db.quotes.push(o)}
+    if(modalType==='client'){
+      o.createdAt=today();db.clients.push(o);
+      const quote={id:uid(),clientId:o.id,service:o.requestedService||'Orçamento a realizar',amount:0,status:o.visitDate?'Visita agendada':'Novo contato',visitDate:o.visitDate||'',visitTime:o.visitTime||'',notes:o.notes||'',createdAt:today()};
+      db.quotes.push(quote);
+      if(o.visitDate){db.events.push({id:uid(),title:'Visita para orçamento — '+o.name,date:o.visitDate,time:o.visitTime||'',clientId:o.id,notes:'Endereço: '+(o.address||'')+' | Serviço: '+(o.requestedService||'')});}
+    }
+    if(modalType==='quote'){o.status=o.status||'Em elaboração';o.createdAt=today();db.quotes.push(o)}
     if(modalType==='work'){o.status='Aguardando início';o.progress=0;o.deposit=Number(o.deposit||0);o.helperCost=Number(o.helperCost||0);o.toolCost=Number(o.toolCost||0);db.works.push(o)}
     if(modalType==='event')db.events.push(o);
     if(modalType==='transaction')db.transactions.push(o);
@@ -285,7 +290,7 @@
   function renderDashboard(){
     const active=db.works.filter(w=>w.status==='Em andamento').length;
     document.getElementById('statWorks').textContent=active;
-    document.getElementById('statQuotes').textContent=db.quotes.filter(q=>['Pendente','Em negociação'].includes(q.status)).length;
+    document.getElementById('statQuotes').textContent=db.quotes.filter(q=>['Visita agendada','Novo contato','Em elaboração','Aguardando resposta','Em negociação'].includes(q.status)).length;
     document.getElementById('statToday').textContent=db.events.filter(e=>e.date===today()).length;
     document.getElementById('statTasks').textContent=db.tasks.filter(t=>!t.done).length+db.entries.filter(e=>e.pending).length;
     const todays=db.events.filter(e=>e.date===today()).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
@@ -303,12 +308,15 @@
     const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
     const activeOnly=document.querySelector('[data-client-filter].active')?.dataset.clientFilter==='active';
     const list=db.clients.filter(c=>(c.name+' '+(c.phone||'')).toLowerCase().includes(q)&&(!activeOnly||db.works.some(w=>w.clientId===c.id&&w.status==='Em andamento')));
-    document.getElementById('clientList').innerHTML=list.length?list.map(c=>`<div class="data-row"><div class="avatar">${escapeHTML(c.name.slice(0,1).toUpperCase())}</div><div class="data-content"><strong>${escapeHTML(c.name)}</strong><small>${escapeHTML(c.phone||'Telefone não informado')} · ${escapeHTML(c.address||'Endereço não informado')}</small></div><div class="row-end"><span class="badge b-blue">${db.works.filter(w=>w.clientId===c.id).length} obra(s)</span></div></div>`).join(''):'<div class="empty">Nenhum cliente cadastrado. Use “Novo cliente” para começar.</div>';
+    document.getElementById('clientList').innerHTML=list.length?list.map(c=>{const qs=db.quotes.filter(x=>x.clientId===c.id);const latest=qs[qs.length-1];return `<div class="data-row client-click" data-client-detail="${c.id}" role="button" tabindex="0"><div class="avatar">${escapeHTML((c.name||'?').slice(0,1).toUpperCase())}</div><div class="data-content"><strong>${escapeHTML(c.name)}</strong><small>${escapeHTML(c.phone||'Telefone não informado')} · ${escapeHTML(c.address||'Endereço não informado')}</small><small>${escapeHTML(c.requestedService||'Sem serviço informado')} ${latest?'· '+escapeHTML(latest.status):''}</small></div><div class="row-end"><span class="badge b-blue">${qs.length} orçamento(s)</span><button class="btn btn-small" data-client-edit="${c.id}">Abrir / editar</button></div></div>`}).join(''):'<div class="empty">Nenhum cliente cadastrado. Use “Novo cliente” para começar.</div>';
   }
   function renderQuotes(){
     const q=(document.getElementById('quoteSearch')?.value||'').toLowerCase(),f=document.querySelector('[data-quote-filter].active')?.dataset.quoteFilter||'all';
     const list=db.quotes.filter(x=>(x.service+' '+clientName(x.clientId)).toLowerCase().includes(q)&&(f==='all'||x.status===f));
-    document.getElementById('quoteList').innerHTML=list.length?list.map(x=>`<div class="data-row"><div class="avatar">▤</div><div class="data-content"><strong>${escapeHTML(x.service)}</strong><small>${escapeHTML(clientName(x.clientId))} · Validade: ${dateBR(x.validUntil)}</small></div><div class="row-end"><div><div class="money" data-money>${val(x.amount)}</div>${badge(x.status)}</div><button class="btn btn-small" data-quote-approve="${x.id}" ${x.status==='Aprovado'?'disabled':''}>Aprovar</button></div></div>`).join(''):'<div class="empty">Nenhum orçamento encontrado.</div>';
+    const period=document.getElementById('quotePeriod')?.value||'month';const now=new Date();const inPeriod=x=>period==='all'||((new Date((x.createdAt||today())+'T12:00:00')).getMonth()===now.getMonth()&&(new Date((x.createdAt||today())+'T12:00:00')).getFullYear()===now.getFullYear());const count=status=>db.quotes.filter(x=>x.status===status&&inPeriod(x)).length;
+    const periodLabel=period==='all'?'no total':'neste mês';
+    document.getElementById('quoteSummary').innerHTML=[[`Visitas agendadas ${periodLabel}`,count('Visita agendada')],['Aguardando resposta',count('Aguardando resposta')+count('Em negociação')],['Aprovados',count('Aprovado')],['Não aprovados',count('Não aprovado')]].map(([label,n])=>`<div class="card"><span class="small muted">${label}</span><h2>${n}</h2></div>`).join('');
+    document.getElementById('quoteList').innerHTML=list.length?list.map(x=>`<div class="data-row"><div class="avatar">▤</div><div class="data-content"><strong>${escapeHTML(x.service)}</strong><small>${escapeHTML(clientName(x.clientId))} · ${x.visitDate?'Visita: '+dateBR(x.visitDate):'Orçamento'} · ${x.validUntil?'Validade: '+dateBR(x.validUntil):'Sem validade definida'}</small></div><div class="row-end"><div><div class="money" data-money>${val(x.amount)}</div>${badge(x.status)}</div><button class="btn btn-small" data-quote-detail="${x.id}">Abrir</button></div></div>`).join(''):'<div class="empty">Nenhum orçamento encontrado.</div>';
   }
   function renderWorks(){
     const q=(document.getElementById('workSearch')?.value||'').toLowerCase(),f=document.querySelector('[data-work-filter].active')?.dataset.workFilter||'all';
@@ -341,9 +349,40 @@
   }
   document.addEventListener('click',e=>{
     const a=e.target.closest('[data-quote-approve]');if(a){const q=db.quotes.find(x=>x.id===a.dataset.quoteApprove);if(q){q.status='Aprovado';const existing=db.works.some(w=>w.quoteId===q.id);if(!existing){db.works.push({id:uid(),quoteId:q.id,clientId:q.clientId,name:q.service,service:q.service,amount:q.amount||0,status:'Aguardando início',progress:0,startDate:'',endDate:'',deposit:0,helperCost:0,toolCost:0})}save();}}
+    const ce=e.target.closest('[data-client-edit], [data-client-detail]');if(ce){const id=ce.dataset.clientEdit||ce.dataset.clientDetail;const c=db.clients.find(x=>x.id===id);if(c)openClientDetail(c);return}
+    const qd=e.target.closest('[data-quote-detail]');if(qd){const q=db.quotes.find(x=>x.id===qd.dataset.quoteDetail);if(q)openQuoteDetail(q);return}
     const ev=e.target.closest('[data-event-done]');if(ev){db.events=db.events.filter(x=>x.id!==ev.dataset.eventDone);save()}
     const wd=e.target.closest('[data-work-detail]');if(wd){const w=db.works.find(x=>x.id===wd.dataset.workDetail);if(w)openWorkDetail(w)}
   });
+
+  function openClientDetail(c){
+    modalType='clientEdit';document.getElementById('modalTitle').textContent='Cliente — editar cadastro';
+    document.getElementById('modalFields').innerHTML=`
+      <div class="field"><label>Nome</label><input id="ceName" required value="${escapeHTML(c.name)}"></div>
+      <div class="field"><label>WhatsApp / telefone</label><input id="cePhone" value="${escapeHTML(c.phone||'')}"></div>
+      <div class="field full"><label>Endereço</label><input id="ceAddress" value="${escapeHTML(c.address||'')}"></div>
+      <div class="field full"><label>Serviço solicitado inicialmente</label><textarea id="ceService">${escapeHTML(c.requestedService||'')}</textarea></div>
+      <div class="field full"><label>Observações</label><textarea id="ceNotes">${escapeHTML(c.notes||'')}</textarea></div>
+      <div class="field full"><label>Histórico de orçamentos</label><div class="card" style="box-shadow:none;padding:10px">${db.quotes.filter(q=>q.clientId===c.id).map(q=>`<div class="list-item"><div class="item-main"><strong>${escapeHTML(q.service)}</strong><small>${escapeHTML(q.status)} · ${q.amount?money(q.amount):'Valor ainda não definido'}</small></div></div>`).join('')||'<span class="small muted">Nenhum orçamento registrado.</span>'}</div></div>`;
+    document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();c.name=document.getElementById('ceName').value.trim();c.phone=document.getElementById('cePhone').value.trim();c.address=document.getElementById('ceAddress').value.trim();c.requestedService=document.getElementById('ceService').value;c.notes=document.getElementById('ceNotes').value;closeModal();document.getElementById('modalForm').onsubmit=null;save()};
+    document.getElementById('modalBackdrop').classList.add('open');
+  }
+  function openQuoteDetail(q){
+    modalType='quoteEdit';document.getElementById('modalTitle').textContent='Orçamento — '+clientName(q.clientId);
+    const statuses=['Visita agendada','Em elaboração','Aguardando resposta','Em negociação','Aprovado','Não aprovado'];
+    document.getElementById('modalFields').innerHTML=`
+      <div class="field full"><label>Cliente</label><input value="${escapeHTML(clientName(q.clientId))}" disabled></div>
+      <div class="field full"><label>Serviços / descrição</label><textarea id="qeService">${escapeHTML(q.service||'')}</textarea></div>
+      <div class="field"><label>Valor proposto (R$)</label><input id="qeAmount" type="number" min="0" step="0.01" value="${Number(q.amount||0)}"></div>
+      <div class="field"><label>Validade</label><input id="qeValid" type="date" value="${q.validUntil||''}"></div>
+      <div class="field"><label>Situação</label><select id="qeStatus">${statuses.map(x=>`<option ${q.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="field"><label>Data da visita</label><input id="qeVisitDate" type="date" value="${q.visitDate||''}"></div>
+      <div class="field full"><label>Observações / condições</label><textarea id="qeNotes">${escapeHTML(q.notes||'')}</textarea></div>`;
+    document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();q.service=document.getElementById('qeService').value;q.amount=Number(document.getElementById('qeAmount').value||0);q.validUntil=document.getElementById('qeValid').value;q.status=document.getElementById('qeStatus').value;q.visitDate=document.getElementById('qeVisitDate').value;q.notes=document.getElementById('qeNotes').value;
+      if(q.status==='Aprovado'&&!db.works.some(w=>w.quoteId===q.id)){db.works.push({id:uid(),quoteId:q.id,clientId:q.clientId,name:q.service,service:q.service,amount:q.amount,status:'Aguardando início',progress:0,startDate:'',endDate:'',deposit:0,helperCost:0,toolCost:0})}
+      closeModal();document.getElementById('modalForm').onsubmit=null;save()};
+    document.getElementById('modalBackdrop').classList.add('open');
+  }
   function openWorkDetail(w){
     const backdrop=document.getElementById('modalBackdrop');modalType='detail';
     document.getElementById('modalTitle').textContent=w.name;
@@ -365,6 +404,7 @@
     document.getElementById('finishWork').onclick=()=>{if(confirm('Confirma que o serviço foi concluído e que recebeu todo o valor combinado?')){w.status='Finalizada';w.progress=100;w.finishedAt=today();closeModal();document.getElementById('modalForm').onsubmit=null;save()}};
   }
   ['clientSearch','quoteSearch','workSearch','agendaSearch','historySearch'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+  document.getElementById('quotePeriod').addEventListener('change',renderQuotes);
   document.querySelectorAll('[data-client-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-client-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderClients()});
   document.querySelectorAll('[data-quote-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-quote-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderQuotes()});
   document.querySelectorAll('[data-work-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-work-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderWorks()});
