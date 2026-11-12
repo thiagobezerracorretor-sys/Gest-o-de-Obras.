@@ -278,6 +278,7 @@
   document.getElementById('closeModal').onclick=closeModal;document.getElementById('cancelModal').onclick=closeModal;
   document.getElementById('modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal()});
   document.getElementById('modalForm').addEventListener('submit',e=>{
+    if(['clientEdit','quoteEdit','detail'].includes(modalType)) return;
     e.preventDefault();const fd=new FormData(e.target),o=Object.fromEntries(fd.entries());o.id=uid();
     if('amount'in o)o.amount=Number(o.amount||0);if('deposit'in o)o.deposit=Number(o.deposit||0);
     if(modalType==='client'){
@@ -349,7 +350,7 @@
     const period=document.getElementById('quotePeriod')?.value||'month';const now=new Date();const inPeriod=x=>period==='all'||((new Date((x.createdAt||today())+'T12:00:00')).getMonth()===now.getMonth()&&(new Date((x.createdAt||today())+'T12:00:00')).getFullYear()===now.getFullYear());const count=status=>db.quotes.filter(x=>x.status===status&&inPeriod(x)).length;
     const periodLabel=period==='all'?'no total':'neste mês';
     document.getElementById('quoteSummary').innerHTML=[[`Visitas agendadas ${periodLabel}`,count('Visita agendada')],['Aguardando resposta',count('Aguardando resposta')+count('Em negociação')],['Aprovados',count('Aprovado')],['Não aprovados',count('Não aprovado')]].map(([label,n])=>`<div class="card"><span class="small muted">${label}</span><h2>${n}</h2></div>`).join('');
-    document.getElementById('quoteList').innerHTML=list.length?list.map(x=>`<div class="data-row"><div class="avatar">▤</div><div class="data-content"><strong>${escapeHTML(x.service)}</strong><small>${escapeHTML(clientName(x.clientId))} · ${x.visitDate?'Visita: '+dateBR(x.visitDate):'Orçamento'} · ${x.validUntil?'Validade: '+dateBR(x.validUntil):'Sem validade definida'}</small></div><div class="row-end"><div><div class="money" data-money>${val(x.amount)}</div>${badge(x.status)}</div><button class="btn btn-small" data-quote-detail="${x.id}">Abrir</button></div></div>`).join(''):'<div class="empty">Nenhum orçamento encontrado.</div>';
+    document.getElementById('quoteList').innerHTML=list.length?list.map(x=>`<div class="data-row"><div class="avatar">▤</div><div class="data-content"><strong>${escapeHTML(x.service)}</strong><small>${escapeHTML(clientName(x.clientId))} · ${x.visitDate?'Visita: '+dateBR(x.visitDate):'Orçamento'} · ${x.validUntil?'Validade: '+dateBR(x.validUntil):'Sem validade definida'}</small><small>WhatsApp: ${escapeHTML(db.clients.find(c=>c.id===x.clientId)?.phone||'Não informado')} · Endereço: ${escapeHTML(db.clients.find(c=>c.id===x.clientId)?.address||x.address||'Não informado')}</small></div><div class="row-end"><div><div class="money" data-money>${val(x.amount)}</div>${badge(x.status)}</div><button class="btn btn-small" data-quote-detail="${x.id}">Abrir</button></div></div>`).join(''):'<div class="empty">Nenhum orçamento encontrado.</div>';
   }
   function renderWorks(){
     const q=(document.getElementById('workSearch')?.value||'').toLowerCase(),f=document.querySelector('[data-work-filter].active')?.dataset.workFilter||'all';
@@ -402,7 +403,7 @@
     document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();c.name=document.getElementById('ceName').value.trim();c.phone=document.getElementById('cePhone').value.trim();c.address=document.getElementById('ceAddress').value.trim();c.requestedService=document.getElementById('ceService').value;c.visitDate=document.getElementById('ceVisitDate').value;c.visitTime=document.getElementById('ceVisitTime').value;c.notes=document.getElementById('ceNotes').value;
       let q=db.quotes.find(x=>x.clientId===c.id&&['Visita agendada','Novo contato'].includes(x.status));
       if(!q){q={id:uid(),clientId:c.id,service:c.requestedService||'Orçamento a realizar',amount:0,status:'Visita agendada',createdAt:today()};db.quotes.push(q)}
-      q.service=c.requestedService||q.service;q.visitDate=c.visitDate;q.visitTime=c.visitTime;q.address=c.address;
+      q.service=c.requestedService||q.service;q.visitDate=c.visitDate;q.visitTime=c.visitTime;q.address=c.address;q.phone=c.phone;
       let ev=db.events.find(x=>x.quoteId===q.id);
       if(c.visitDate){
         if(!ev){ev={id:uid(),clientId:c.id,quoteId:q.id};db.events.push(ev)}
@@ -417,13 +418,16 @@
     const statuses=['Visita agendada','Em elaboração','Aguardando resposta','Em negociação','Aprovado','Não aprovado'];
     document.getElementById('modalFields').innerHTML=`
       <div class="field full"><label>Cliente</label><input value="${escapeHTML(clientName(q.clientId))}" disabled></div>
+      <div class="field"><label>WhatsApp / telefone</label><input value="${escapeHTML(db.clients.find(c=>c.id===q.clientId)?.phone||'Não informado')}" disabled></div>
+      <div class="field full"><label>Endereço da visita / serviço</label><textarea disabled>${escapeHTML(db.clients.find(c=>c.id===q.clientId)?.address||q.address||'Endereço não informado')}</textarea></div>
+      <div class="field"><label>Data da visita</label><input value="${q.visitDate||''}" disabled></div>
+      <div class="field"><label>Horário da visita</label><input value="${q.visitTime||''}" disabled></div>
       <div class="field full"><label>Serviços / descrição</label><textarea id="qeService">${escapeHTML(q.service||'')}</textarea></div>
       <div class="field"><label>Valor proposto (R$)</label><input id="qeAmount" type="number" min="0" step="0.01" value="${Number(q.amount||0)}"></div>
       <div class="field"><label>Validade</label><input id="qeValid" type="date" value="${q.validUntil||''}"></div>
       <div class="field"><label>Situação</label><select id="qeStatus">${statuses.map(x=>`<option ${q.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
-      <div class="field"><label>Data da visita</label><input id="qeVisitDate" type="date" value="${q.visitDate||''}"></div>
       <div class="field full"><label>Observações / condições</label><textarea id="qeNotes">${escapeHTML(q.notes||'')}</textarea></div>`;
-    document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();q.service=document.getElementById('qeService').value;q.amount=Number(document.getElementById('qeAmount').value||0);q.validUntil=document.getElementById('qeValid').value;q.status=document.getElementById('qeStatus').value;q.visitDate=document.getElementById('qeVisitDate').value;q.notes=document.getElementById('qeNotes').value;
+    document.getElementById('modalForm').onsubmit=e=>{e.preventDefault();q.service=document.getElementById('qeService').value;q.amount=Number(document.getElementById('qeAmount').value||0);q.validUntil=document.getElementById('qeValid').value;q.status=document.getElementById('qeStatus').value;q.notes=document.getElementById('qeNotes').value;
       if(q.status==='Aprovado'&&!db.works.some(w=>w.quoteId===q.id)){db.works.push({id:uid(),quoteId:q.id,clientId:q.clientId,name:q.service,service:q.service,amount:q.amount,status:'Aguardando início',progress:0,startDate:'',endDate:'',deposit:0,helperCost:0,toolCost:0})}
       closeModal();document.getElementById('modalForm').onsubmit=null;save()};
     document.getElementById('modalBackdrop').classList.add('open');
